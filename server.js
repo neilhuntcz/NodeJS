@@ -1,61 +1,46 @@
-const request = require('request');
+const async = require('async');
+const _ = require('lodash');
 
-const url = "https://test.dazn.com";
-const requestPromises = [];
-
-function getResponse(url) {
-    return new Promise((resolve, reject) => {
-        request(url, (err, response, body) => {
-            if (err) {
-                return reject(err);
-            }
-
-            return resolve(body);
-        });
-    });
+function promiseWrapper(cb) {
+    generateNumber().then(val => {
+        console.log(val);
+        cb(null, val);
+    }).catch(err => cb(err))
 }
 
-const pauseForThought = ms => new Promise(res => setTimeout(res, ms))
-  
-async function compareStrings(string1, string2) 
-{
-    await pauseForThought(100)    
-    return string1 === string2 ? true : false;
+function promiseWrapper2(prev, cb) {
+    generateNumber().then(val => {
+        console.log(val);
+        cb(null, val + prev);
+    }).catch(err => cb(err))
 }
 
-async function areTheSame(downloadResults) 
-{
-    const resultpromises = [];
-    
-    for (var i = 0; i < downloadResults.length; i++) 
-    {
-        resultpromises.push(compareStrings(downloadResults[0], downloadResults[i]));
+function generateNumber() {
+    return new Promise((resolve) => setTimeout(() => {
+            resolve(_.random(1, 10));
+        }
+        , 100));
+}
+
+async function go() {
+    const funcs = [];
+    funcs.push(promiseWrapper);
+
+    for (let i = 0; i < 99; i++) {
+        funcs.push(promiseWrapper2)
     }
 
-    const results = await Promise.all(resultpromises).catch(error => console.log('Something went wrong when compairing:', error));
-
-    if (results)
-    {
-        let allsame = true;
-
-        for (var j = 0; j < results.length; j++) 
-        {
-            if (!results[j])
+    await async.waterfall(
+        funcs, 
+        function (error, finalResult) {
+            if (error) {
+                console.log("Error occured: " + error);        
+            }
+            else
             {
-                allsame = false;
-                break;
+                console.log("Final sum: " + finalResult);            
             }
-        }     
-
-        console.log('Are they all the same?:', allsame ? "Yes" : "No");
-    }
+    });    
 }
 
-for(let i = 0; i < 100; i++)
-{
-    requestPromises[i] = getResponse(url);
-}
-
-Promise.all(requestPromises)
-.then(downloadResults => { areTheSame(downloadResults); })
-.catch(error => console.log('Something went wrong when downloading:', error));
+go();
